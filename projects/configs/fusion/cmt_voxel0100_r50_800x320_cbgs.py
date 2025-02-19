@@ -33,18 +33,18 @@ ida_aug_conf = {
 
 train_pipeline = [
     dict(
-        type='LoadPointsFromFile',
+        type='LoadPointsFromFile', # Load points from file .pcd into GPU mem
         coord_type='LIDAR',
-        load_dim=5,
+        load_dim=5,# NuScenes有5个维度[x, y, z, intensity, timestamp]
         use_dim=[0, 1, 2, 3, 4],
     ),
     dict(
-        type='LoadPointsFromMultiSweeps',
-        sweeps_num=10,
-        use_dim=[0, 1, 2, 3, 4],
+        type='LoadPointsFromMultiSweeps', # Load points from multi sweeps
+        sweeps_num=10, # 表示从当前帧开始，向前加载 10 帧的点云数据
+        use_dim=[0, 1, 2, 3, 4], #使用全部5个维度
     ),
-    dict(type='LoadMultiViewImageFromFiles'),
-    dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True),
+    dict(type='LoadMultiViewImageFromFiles'),# Load images from file
+    dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True),# Load annotations from file
     dict(
         type='UnifiedObjectSample',
         sample_2d=True,

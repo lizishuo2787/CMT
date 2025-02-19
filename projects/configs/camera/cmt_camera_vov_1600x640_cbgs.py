@@ -1,53 +1,62 @@
 plugin=True
 plugin_dir='projects/mmdet3d_plugin/'
 
-point_cloud_range = [-54.0, -54.0, -5.0, 54.0, 54.0, 3.0]
-class_names = [
+point_cloud_range = [-54.0, -54.0, -5.0, 54.0, 54.0, 3.0]  # [x_min, y_min, z_min, x_max, y_max, z_max]
+class_names = [ 
     'car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'barrier',
     'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
 ]
-voxel_size = [0.075, 0.075, 0.2]
-out_size_factor = 8
-evaluation = dict(interval=20)
-dataset_type = 'CustomNuScenesDataset'
+voxel_size = [0.075, 0.075, 0.2] # 体素大小
+out_size_factor = 8 #控制feature map的大小，缩放因子，默认为8
+evaluation = dict(interval=20) #每20个epoch评估一次
+dataset_type = 'CustomNuScenesDataset' 
+# 自定义数据集类：CustomNuScenesDataset 是在标准 NuScenesDataset 的基础上进行扩展的自定义数据集类。它通常用于处理特定任务或特定数据格式的需求。#
+# 功能：除了继承 NuScenesDataset 的基本功能外，CustomNuScenesDataset 可以根据需要进行自定义扩展，例如添加新的数据预处理步骤、支持新的数据格式或调整数据增强方法。
+
 data_root = 'data/nuscenes/'
 input_modality = dict(
     use_lidar=True,
     use_camera=True,
-    use_radar=False,
+    use_radar=False, #TODO：新增radar链路
     use_map=False,
     use_external=False)
 
 img_norm_cfg = dict(
     mean=[103.530, 116.280, 123.675], std=[57.375, 57.120, 58.395], to_rgb=False)
+# 预训练模型的均值和标准差，用于图像归一化处理
     
-ida_aug_conf = {
-        "resize_lim": (0.94, 1.25),
-        "final_dim": (640, 1600),
-        "bot_pct_lim": (0.0, 0.0),
-        "rot_lim": (0.0, 0.0),
-        "H": 900,
-        "W": 1600,
-        "rand_flip": True,
+ida_aug_conf = {# 图像增强配置
+        "resize_lim": (0.94, 1.25), #图像缩放范围
+        "final_dim": (640, 1600), #最终图像尺寸
+        "bot_pct_lim": (0.0, 0.0),#图像下边缘裁剪百分比范围
+        "rot_lim": (0.0, 0.0),#图像旋转角度范围
+        "H": 900,#目标高度
+        "W": 1600,#目标宽度
+        "rand_flip": True,#是否随机翻转图像
     }
 
-train_pipeline = [
-    dict(type='LoadMultiViewImageFromFiles'),
-    dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True),
-    dict(type='GlobalRotScaleTransImage',
-            rot_range=[-0.3925, 0.3925],
-            translation_std=[0, 0, 0],
+train_pipeline = [ #数据处理
+    dict(type='LoadMultiViewImageFromFiles'), #加载多视图图像
+    dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True),#加载3D标注
+    dict(type='GlobalRotScaleTransImage', #用于数据增强的全局旋转、缩放和平移
+            rot_range=[-0.3925, 0.3925], # ±22.5°
+            translation_std=[0, 0, 0],#[x,y,z]平移标准差
             scale_ratio_range=[0.95, 1.05],
             reverse_angle=True,
-            training=True
+            training=True #仅在训练时使用
             ),
-    dict(type='ObjectRangeFilter', point_cloud_range=point_cloud_range),
-    dict(type='ObjectNameFilter', classes=class_names),
-    dict(type='ResizeCropFlipImage', data_aug_conf = ida_aug_conf, training=True),
-    dict(type='NormalizeMultiviewImage', **img_norm_cfg),
-    dict(type='PadMultiViewImage', size_divisor=32),
-    dict(type='DefaultFormatBundle3D', class_names=class_names),
-    dict(type='Collect3D', keys=['img', 'gt_bboxes_3d', 'gt_labels_3d'],
+    dict(type='ObjectRangeFilter', point_cloud_range=point_cloud_range), #过滤超出范围的点云
+    dict(type='ObjectNameFilter', classes=class_names), #保留class_names中的类别
+    dict(type='ResizeCropFlipImage', data_aug_conf = ida_aug_conf, training=True),#数据增强，只在训练时使用
+    dict(type='NormalizeMultiviewImage', **img_norm_cfg), #对每个像素进行处理 pixel = (pixel - mean) / std
+    dict(type='PadMultiViewImage', size_divisor=32), #将图像填充到32的倍数
+    dict(type='DefaultFormatBundle3D', class_names=class_names), 
+    #图像数据格式化：将图像数据转换为张量（Tensor）
+    #3D 边界框格式化：将 3D 边界框数据转换为张量
+    #类别标签格式化：将类别标签转换为张量
+    
+   
+    dict(type='Collect3D', keys=['img', 'gt_bboxes_3d', 'gt_labels_3d'], #[处理后的图像，3d bboxes坐标, 类型标签]
          meta_keys=('filename', 'ori_shape', 'img_shape', 'lidar2img',
                     'depth2img', 'cam2img', 'pad_shape',
                     'scale_factor', 'flip', 'pcd_horizontal_flip',
@@ -57,7 +66,9 @@ train_pipeline = [
                     'transformation_3d_flow', 'rot_degree',
                     'gt_bboxes_3d', 'gt_labels_3d'))
 ]
-test_pipeline = [
+test_pipeline = [ 
+    # 测试阶段的数据处理流程
+    #一般不包含复杂数据增强，只对图像进行缩放和平移操作
     dict(type='LoadMultiViewImageFromFiles'),
     dict(
         type='MultiScaleFlipAug3D',
@@ -66,20 +77,21 @@ test_pipeline = [
         flip=False,
         transforms=[
             dict(type='ResizeCropFlipImage', data_aug_conf = ida_aug_conf, training=False),
-            dict(type='NormalizeMultiviewImage', **img_norm_cfg),
+            #非训练阶段，使用相同的数据增强配置，没有区别,TODO: 这里删除或者改变测试阶段的数据增强配置
+            dict(type='NormalizeMultiviewImage', **img_norm_cfg), #**用于解包字典
             dict(type='PadMultiViewImage', size_divisor=32),
             dict(
                 type='DefaultFormatBundle3D',
                 class_names=class_names,
-                with_label=False),
-            dict(type='Collect3D', keys=['img'])
+                with_label=False), #预测标签
+            dict(type='Collect3D', keys=['img']) #只收集原始图像数据，不包含3D标注信息
         ])
 ]
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=6,
     train=dict(
-        type='CBGSDataset',
+        type='CBGSDataset', #主要功能是通过类别平衡的采样方法，确保每个类别在训练过程中被均匀地采样
         dataset=dict(
             type=dataset_type,
             data_root=data_root,
@@ -89,7 +101,7 @@ data = dict(
             classes=class_names,
             modality=input_modality,
             test_mode=False,
-            box_type_3d='LiDAR')),
+            box_type_3d='LiDAR')), #表示使用 LiDAR 坐标系来表示 3D 边界框
     val=dict(
         type=dataset_type,
         data_root=data_root,
