@@ -78,20 +78,21 @@ VoVNet57_eSE = {
     "dw": False
 }
 
+# using this
 VoVNet99_eSE = {
-    'stem': [64, 64, 128],
-    "stage_conv_ch": [128, 160, 192, 224],
-    "stage_out_ch": [256, 512, 768, 1024],
-    "layer_per_block": 5,
-    "block_per_stage": [1, 3, 9, 3],
+    'stem': [64, 64, 128],# 三个卷积层，分别是每个卷积层的输出通道数
+    "stage_conv_ch": [128, 160, 192, 224], # 四个stage，每个stage输入的卷积通道数
+    "stage_out_ch": [256, 512, 768, 1024], # 四个stage，每个stage输出的卷积通道数
+    "layer_per_block": 5, # 每个block有5个layer
+    "block_per_stage": [1, 3, 9, 3], # 每个stage有1,3,9,3个block
     "eSE": True,
     "dw": False
 }
 
 _STAGE_SPECS = {
-    "V-19-slim-dw-eSE": VoVNet19_slim_dw_eSE,
-    "V-19-dw-eSE": VoVNet19_dw_eSE,
-    "V-19-slim-eSE": VoVNet19_slim_eSE,
+    "V-19-slim-dw-eSE": VoVNet19_slim_dw_eSE, #eSE eSE（Efficient Squeeze-and-Excitation）模块
+    "V-19-dw-eSE": VoVNet19_dw_eSE, #dw 深度可分离卷积
+    "V-19-slim-eSE": VoVNet19_slim_eSE, # slim卷积大小比其他相比小一半
     "V-19-eSE": VoVNet19_eSE,
     "V-39-eSE": VoVNet39_eSE,
     "V-57-eSE": VoVNet57_eSE,

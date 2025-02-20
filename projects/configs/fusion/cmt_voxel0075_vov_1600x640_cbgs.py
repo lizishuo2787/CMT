@@ -10,7 +10,7 @@ voxel_size = [0.075, 0.075, 0.2]
 out_size_factor = 8
 evaluation = dict(interval=20)
 dataset_type = 'CustomNuScenesDataset'
-data_root = 'data/nuscenes/'
+data_root = '/media/lizishuo02/1B0FF2CE2A57439F/mmdetection3d/data/nuscenes/'
 input_modality = dict(
     use_lidar=True,
     use_camera=True,
@@ -185,7 +185,7 @@ data = dict(
         test_mode=True,
         box_type_3d='LiDAR'))
 model = dict(
-    type='CmtDetector',
+    type='CmtDetector', # CMT Network
     use_grid_mask=True,
     img_backbone=dict(
         type='VoVNet',
