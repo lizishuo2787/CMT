@@ -222,21 +222,21 @@ model = dict(
         encoder_paddings=((0, 0, 1), (0, 0, 1), (0, 0, [0, 1, 1]), (0, 0)),
         block_type='basicblock'),
     pts_backbone=dict(
-        type='SECOND',
+        type='SECOND', # Sparsely Embedded Convolutional Detection
         in_channels=256,
         out_channels=[128, 256],
         layer_nums=[5, 5],
-        layer_strides=[1, 2],
+        layer_strides=[1, 2], #每个模块的步幅。步幅为 2 时，特征图的空间分辨率会减半。
         norm_cfg=dict(type='BN', eps=0.001, momentum=0.01),
-        conv_cfg=dict(type='Conv2d', bias=False)),
+        conv_cfg=dict(type='Conv2d', bias=False)), #使用 2D 卷积，即使输入是 3D 点云数据。这是因为点云数据通常会投影到 2D 表示(BEV)
     pts_neck=dict(
         type='SECONDFPN',
         in_channels=[128, 256],
         out_channels=[256, 256],
         upsample_strides=[1, 2],
         norm_cfg=dict(type='BN', eps=0.001, momentum=0.01),
-        upsample_cfg=dict(type='deconv', bias=False),
-        use_conv_for_no_stride=True),
+        upsample_cfg=dict(type='deconv', bias=False), #反卷积上采样
+        use_conv_for_no_stride=True), #如果为 True，当步幅为 1 时，使用卷积层代替上采样
     pts_bbox_head=dict(
         type='CmtHead',
         in_channels=512,

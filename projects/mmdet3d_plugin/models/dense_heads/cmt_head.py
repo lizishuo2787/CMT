@@ -328,15 +328,28 @@ class CmtHead(BaseModule):
             cfg['grid_size'][1] // self.downsample_scale,
             cfg['grid_size'][0] // self.downsample_scale
         )
-        meshgrid = [[0, x_size - 1, x_size], [0, y_size - 1, y_size]]
+        meshgrid = [[0, x_size - 1, x_size], [0, y_size - 1, y_size]] # 对于 x 方向：从 0 到 x_size - 1，共 x_size 个点。
         batch_y, batch_x = torch.meshgrid(*[torch.linspace(it[0], it[1], it[2]) for it in meshgrid])
         batch_x = (batch_x + 0.5) / x_size
         batch_y = (batch_y + 0.5) / y_size
         coord_base = torch.cat([batch_x[None], batch_y[None]], dim=0)
-        coord_base = coord_base.view(2, -1).transpose(1, 0) # (H*W, 2)
+        # 将 batch_x 和 batch_y 拼接成一个形状为 (2, H, W) 的张量。
+        coord_base = coord_base.view(2, -1).transpose(1, 0) # （2，H，W）-> (2,H*W) -> (H*W, 2)
+        
         return coord_base
 
     def prepare_for_dn(self, batch_size, reference_points, img_metas):
+        # DN： Denoising Training
+        # 输入：
+        # batch_size：批量大小。
+        # reference_points：参考点（通常是目标检测中的锚点或查询点）。
+        # img_metas：图像的元信息，包含真实标签（如 3D 边界框和类别标签）。
+        # 输出：
+        # 准备用于去噪训练的数据，包括：
+        # 添加噪声的真实边界框和标签。
+        # 用于去噪训练的掩码（attn_mask）。
+        # 其他辅助信息（如 mask_dict）。
+        
         if self.training:
             targets = [torch.cat((img_meta['gt_bboxes_3d']._data.gravity_center, img_meta['gt_bboxes_3d']._data.tensor[:, 3:]),dim=1) for img_meta in img_metas ]
             labels = [img_meta['gt_labels_3d']._data for img_meta in img_metas ]
@@ -414,11 +427,12 @@ class CmtHead(BaseModule):
 
         return padded_reference_points, attn_mask, mask_dict
 
-    def _rv_pe(self, img_feats, img_metas):
+    def _rv_pe(self, img_feats, img_metas): # image position embedding
+        #输出：(BN, H, W, depth_num, hidden_dim)，其中 depth_num 是深度方向的采样点数，hidden_dim 是隐藏层维度。
         BN, C, H, W = img_feats.shape
         pad_h, pad_w, _ = img_metas[0]['pad_shape'][0]
         coords_h = torch.arange(H, device=img_feats[0].device).float() * pad_h / H
-        coords_w = torch.arange(W, device=img_feats[0].device).float() * pad_w / W
+        coords_w = torch.arange(W, device=img_feats[0].device).float() * pad_w / W #device在GPU
         coords_d = 1 + torch.arange(self.depth_num, device=img_feats[0].device).float() * (self.pc_range[3] - 1) / self.depth_num
         coords_h, coords_w, coords_d = torch.meshgrid([coords_h, coords_w, coords_d])
 

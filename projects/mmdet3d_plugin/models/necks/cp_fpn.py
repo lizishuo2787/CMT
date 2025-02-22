@@ -152,7 +152,7 @@ class CPFPN(BaseModule):
     @auto_fp16()
     def forward(self, inputs):
         """Forward function."""
-        assert len(inputs) == len(self.in_channels)
+        assert len(inputs) == len(self.in_channels) #检查维度是否一致
 
         # build laterals
         laterals = [
@@ -160,7 +160,7 @@ class CPFPN(BaseModule):
             for i, lateral_conv in enumerate(self.lateral_convs)
         ]
 
-        # build top-down path
+        # build top-down path 上采样 插值
         used_backbone_levels = len(laterals)
         for i in range(used_backbone_levels - 1, 0, -1):
             # In some cases, fixing `scale factor` (e.g. 2) is preferred, but

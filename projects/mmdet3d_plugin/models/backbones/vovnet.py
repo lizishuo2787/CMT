@@ -111,7 +111,7 @@ def dw_conv3x3(in_channels, out_channels, module_name, postfix, stride=1, kernel
                 kernel_size=kernel_size,
                 stride=stride,
                 padding=padding,
-                groups=out_channels,
+                groups=out_channels, 
                 bias=False
             )
         ),
@@ -135,12 +135,12 @@ def conv3x3(in_channels, out_channels, module_name, postfix, stride=1, groups=1,
                 kernel_size=kernel_size,
                 stride=stride,
                 padding=padding,
-                groups=groups,
+                groups=groups,#不进行分组卷积
                 bias=False,
             ),
         ),
         (f"{module_name}_{postfix}/norm", nn.BatchNorm2d(out_channels)),
-        (f"{module_name}_{postfix}/relu", nn.ReLU(inplace=True)),
+        (f"{module_name}_{postfix}/relu", nn.ReLU(inplace=True)), #原地操作
     ]
 
 
@@ -171,12 +171,14 @@ class Hsigmoid(nn.Module):
 
     def forward(self, x):
         return F.relu6(x + 3.0, inplace=self.inplace) / 6.0
+        # x [-3, 3] -> [0, 6] -> [0, 1]
+        # relu6(x) = min(max(0, x), 6)
 
 
 class eSEModule(nn.Module):
     def __init__(self, channel, reduction=4):
         super(eSEModule, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1) #输出大小为[N,C,1,1]
         self.fc = nn.Conv2d(channel, channel, kernel_size=1, padding=0)
         self.hsigmoid = Hsigmoid()
 
@@ -188,22 +190,26 @@ class eSEModule(nn.Module):
         return input * x
 
 
-class _OSA_module(nn.Module):
+class _OSA_module(nn.Module): # One-Shot Aggregation 
     def __init__(
         self, in_ch, stage_ch, concat_ch, layer_per_block, module_name, SE=False, identity=False, depthwise=False
     ):
-
+        # 输入通道，stage通道（每个卷积层输出通道），concat通道（最终输出通道），
+        # 每个block的layer数量，模块名称，是否使用SE模块，是否使用identity连接，是否使用深度可分离卷积
         super(_OSA_module, self).__init__()
 
-        self.identity = identity
+        self.identity = identity 
         self.depthwise = depthwise
         self.isReduced = False
-        self.layers = nn.ModuleList()
+        self.layers = nn.ModuleList() #nn.ModuleList 是 PyTorch 中的一个容器类，用于存储多个 nn.Module 对象
+        
+        #通道数缩减
         in_channel = in_ch
         if self.depthwise and in_channel != stage_ch:
             self.isReduced = True
             self.conv_reduction = nn.Sequential(
-                OrderedDict(conv1x1(in_channel, stage_ch, "{}_reduction".format(module_name), "0"))
+                OrderedDict(conv1x1(in_channel, stage_ch, "{}_reduction".format(module_name), "0"))# 0表示序列的第一个模块
+                # 一个 1x1 卷积层，用于将输入通道数从 in_channel 减少到 stage_ch
             )
         for i in range(layer_per_block):
             if self.depthwise:
@@ -226,11 +232,20 @@ class _OSA_module(nn.Module):
         output.append(x)
         if self.depthwise and self.isReduced:
             x = self.conv_reduction(x)
-        for layer in self.layers:
+        for layer in self.layers: # 遍历每一个卷积层
             x = layer(x)
             output.append(x)
 
         x = torch.cat(output, dim=1)
+        # example：
+        #         output = [
+        #     torch.randn(1, 3, 4, 4),  # 第一个特征图，形状为 (1, 3, 4, 4)
+        #     torch.randn(1, 5, 4, 4)  # 第二个特征图，形状为 (1, 5, 4, 4)
+        # ]
+
+        # # 在通道维度上拼接
+        # x = torch.cat(output, dim=1)
+        # print(x.shape)  # 输出: torch.Size([1, 8, 4, 4])
         xt = self.concat(x)
 
         xt = self.ese(xt)
@@ -249,7 +264,7 @@ class _OSA_stage(nn.Sequential):
         super(_OSA_stage, self).__init__()
 
         if not stage_num == 2:
-            self.add_module("Pooling", nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True))
+            self.add_module("Pooling", nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True)) #向上取整
 
         if block_per_stage != 1:
             SE = False
@@ -277,9 +292,10 @@ class _OSA_stage(nn.Sequential):
 
 
 @BACKBONES.register_module()
-class VoVNet(BaseModule):
+class VoVNet(BaseModule): # BaseModule 是一个基础类，用于封装 PyTorch 的 nn.Module
     def __init__(self, spec_name, input_ch=3, out_features=None, 
                  frozen_stages=-1, norm_eval=True, pretrained=None, init_cfg=None):
+        #norm_eval: 是否在评估模式下进行归一化，默认为True
         """
         Args:
             input_ch(int) : the number of input channel
@@ -311,9 +327,9 @@ class VoVNet(BaseModule):
         conv_type = dw_conv3x3 if depthwise else conv3x3
         stem = conv3x3(input_ch, stem_ch[0], "stem", "1", 2)
         stem += conv_type(stem_ch[0], stem_ch[1], "stem", "2", 1)
-        stem += conv_type(stem_ch[1], stem_ch[2], "stem", "3", 2)
+        stem += conv_type(stem_ch[1], stem_ch[2], "stem", "3", 2) #final parameter is stride
         self.add_module("stem", nn.Sequential((OrderedDict(stem))))
-        current_stirde = 4
+        current_stirde = 4 #特征图的尺寸缩小了 4 倍
         self._out_feature_strides = {"stem": current_stirde, "stage2": current_stirde}
         self._out_feature_channels = {"stem": stem_ch[2]}
 
@@ -341,6 +357,7 @@ class VoVNet(BaseModule):
             self._out_feature_channels[name] = config_concat_ch[i]
             if not i == 0:
                 self._out_feature_strides[name] = current_stirde = int(current_stirde * 2)
+                # 更新当前阶段的步幅。从 stage3 开始，每个阶段的步幅翻倍
 
         # initialize weights
         # self._initialize_weights()
