@@ -6,7 +6,8 @@ import os
 import time
 import warnings
 from os import path as osp
-
+import os
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True,max_split_size_mb:128'
 import mmcv
 import torch
 import torch.distributed as dist
@@ -151,7 +152,7 @@ def main():
                 print(_module_path)
                 plg_lib = importlib.import_module(_module_path)
                 
-    plg_lib = importlib.import_module('mmdetection3d.mmdet3d')
+    plg_lib = importlib.import_module('mmdet3d')
 
     # set cudnn_benchmark
     if cfg.get('cudnn_benchmark', False):

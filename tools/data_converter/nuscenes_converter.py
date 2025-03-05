@@ -1,5 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import os
+import sys
+sys.path.append('/workspace/1B0FF2CE2A57439F/CMT')
 from collections import OrderedDict
 from os import path as osp
 from typing import List, Tuple, Union

@@ -10,7 +10,7 @@ voxel_size = [0.075, 0.075, 0.2]
 out_size_factor = 8
 evaluation = dict(interval=20)
 dataset_type = 'CustomNuScenesDataset'
-data_root = '/media/lizishuo02/1B0FF2CE2A57439F/mmdetection3d/data/nuscenes/'
+data_root = '/workspace/1B0FF2CE2A57439F/mmdetection3d/data/nuscenes/'
 input_modality = dict(
     use_lidar=True,
     use_camera=True,
@@ -51,7 +51,7 @@ train_pipeline = [
         mixup_rate=0.5,
         db_sampler=dict(
             type='UnifiedDataBaseSampler',
-            data_root=None,
+            data_root=data_root,
             info_path=data_root + 'nuscenes_dbinfos_train.pkl',
             rate=1.0,
             prepare=dict(
@@ -151,7 +151,7 @@ test_pipeline = [
 ]
 data = dict(
     samples_per_gpu=2,
-    workers_per_gpu=6,
+    workers_per_gpu=0,
     train=dict(
         type='CBGSDataset',
         dataset=dict(
